@@ -8,6 +8,7 @@ const StoreSchema = new Schema({
   city: String,
   country: String,
   legalForm: String,
+  signupFeePaid: { type: Boolean, default: false },
 }, { timestamps: true });
 
 export default StoreSchema;

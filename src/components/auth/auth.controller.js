@@ -1,17 +1,74 @@
 import bcrypt from 'bcryptjs';
+import OTP from '../../db/models/otp';
 import User from '../../db/models/user';
+import generateOTP from '../../helpers/generateOTP';
+import sendgrid from '../../helpers/sendgrid';
 import { generateToken } from '../../helpers/token';
+import userTypes from '../../helpers/userTypes';
 import { validateEmail, validateFields } from '../../helpers/validation';
 
 export const signup = async (req, res) => {
   try {
     const {
-      email, type, password, store
+      firstname, surname, phoneNumber, dob, email, type, password, store
     } = req.body;
-    if (!type) {
+    if (!type || !userTypes.includes(type)) {
       return res.status(400).send({
         success: false,
         message: 'Please enter a valid user type'
+      });
+    }
+    const requiredFields = [
+      {
+        name: 'firstname',
+        value: firstname,
+      },
+      {
+        name: 'surname',
+        value: surname,
+      },
+      {
+        name: 'phone number',
+        value: phoneNumber,
+      },
+      {
+        name: 'date of birth',
+        value: dob,
+      },
+      {
+        name: 'password',
+        value: password,
+      },
+    ];
+    if (type === 'merchant') {
+      requiredFields.push(
+        {
+          name: 'store name',
+          value: store?.name,
+        },
+        {
+          name: 'store address',
+          value: store?.address,
+        },
+        {
+          name: 'store city',
+          value: store?.city,
+        },
+        {
+          name: 'store country',
+          value: store?.country,
+        },
+        {
+          name: 'store legal form',
+          value: store?.legalForm,
+        },
+      );
+    }
+    const validate = validateFields(requiredFields);
+    if (!validate.status) {
+      return res.status(400).send({
+        success: false,
+        message: validate.message
       });
     }
     if (!validateEmail(email)) {
@@ -21,43 +78,21 @@ export const signup = async (req, res) => {
       });
     }
     const hashPassword = bcrypt.hashSync(password);
-    if (type === 'merchant') {
-      const requiredFields = [
-        {
-          name: 'store name',
-          value: store.name,
-        },
-        {
-          name: 'store address',
-          value: store.address,
-        },
-        {
-          name: 'store city',
-          value: store.city,
-        },
-        {
-          name: 'store country',
-          value: store.country,
-        },
-        {
-          name: 'store legal form',
-          value: store.legalForm,
-        },
-      ];
-      const validate = validateFields(requiredFields);
-      if (!validate.status) {
-        return res.status(400).send({
-          success: false,
-          message: validate.message
-        });
-      }
-    }
     const user = await User.create({
       ...req.body,
       password: hashPassword,
       store,
     });
     delete user.password;
+    const otp = await generateOTP(6, { user: user._id });
+    if (otp) {
+      await sendgrid(
+        email,
+        'Welcome to Jumga',
+        `Your otp is ${otp}`,
+        `<p>Your otp is <strong>${otp}</strong></p>`
+      )
+    }
     const token = generateToken({
       id: user._id,
       email,
@@ -73,9 +108,10 @@ export const signup = async (req, res) => {
       });
     }
   } catch (err) {
+    console.log(err)
     return res.status(500).send({
       success: false,
-      message: 'an error occured'
+      message: 'an error occured',
     });
   }
 };
@@ -117,3 +153,46 @@ export const login = async (req, res) => {
     });
   }
 };
+
+export const verifyAccount = async (req, res) => {
+  try {
+    const {code, user} = req.body;
+
+    const findOtp = OTP.findOne({ code, user });
+    if (!findOtp) {
+      return res.status(400).send({
+        success: false,
+        message: 'The otp entered is either invalid/already expired'
+      });
+    }
+
+    const expiry = moment(findOtp.expires).diff(moment(), 'minutes');
+
+    if (expiry) {
+      return res.status(400).send({
+        success: false,
+        message: 'The otp entered is either invalid/already expired'
+      });
+    }
+
+    const findUserAndUpdate = await User.findByIdAndUpdate(user, {accountVerified: true});
+    if (!findUserAndUpdate) {
+      return res.status(400).send({
+        success: false,
+        message: 'An error occured while verifying user'
+      });
+    }
+
+    return res.status(200).send({
+      success: true,
+      message: 'Verification Successful',
+    });
+  } catch (err) {
+    return res.status(500).send({
+      success: false,
+      message: 'an error occured'
+    });
+  }
+}
+
+export const verifyPayment = async (req, res) => {}

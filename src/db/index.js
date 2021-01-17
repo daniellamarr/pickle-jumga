@@ -3,4 +3,13 @@ import { config } from 'dotenv';
 
 config();
 
-mongoose.connect(process.env.DATABASE, { useNewUrlParser: true });
+const { connection } = mongoose;
+
+mongoose.connect(
+  process.env.DATABASE,
+  { useNewUrlParser: true, useUnifiedTopology: true }
+);
+
+connection.once('open', () => {
+  console.log('MongoDB database connection established successfully');
+});

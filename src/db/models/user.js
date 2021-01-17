@@ -6,13 +6,13 @@ const { Schema, model } = mongoose;
 const UserSchema = new Schema({
   firstname: String,
   surname: String,
-  phoneNumber: String,
+  phoneNumber: Number,
   dob: Date,
   email: String,
   password: String,
   type: String,
-  emailVerified: { type: Boolean, default: false },
-  phoneVerified: { type: Boolean, default: false },
+  accountVerified: { type: Boolean, default: false },
+  wallet: { type: Number, default: 0 },
   store: StoreSchema,
 }, { timestamps: true });
 

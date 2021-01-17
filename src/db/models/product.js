@@ -4,9 +4,9 @@ const { Schema, model } = mongoose;
 
 const ProductSchema = new Schema({
   name: String,
-  price: String,
+  price: Number,
   category: String,
-  owner: String,
+  owner: { type: Schema.Types.ObjectId, ref: 'User' },
   image: String,
   active: { type: Boolean, default: true },
 }, { timestamps: true });
