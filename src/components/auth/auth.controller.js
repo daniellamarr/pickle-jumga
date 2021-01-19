@@ -78,6 +78,13 @@ export const signup = async (req, res) => {
         message: 'The email sent is invalid'
       });
     }
+    const checkUser = await User.findOne({ email });
+    if (checkUser) {
+      return res.status(400).send({
+        success: false,
+        message: 'A user already exists with this email address'
+      });
+    }
     const hashPassword = bcrypt.hashSync(password);
     const user = await User.create({
       ...req.body,
