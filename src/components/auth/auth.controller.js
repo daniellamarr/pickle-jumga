@@ -1,10 +1,11 @@
+import moment from 'moment';
 import bcrypt from 'bcryptjs';
 import OTP from '../../db/models/otp';
 import User from '../../db/models/user';
 import generateOTP from '../../helpers/generateOTP';
 import sendgrid from '../../helpers/sendgrid';
-import { generateToken } from '../../helpers/token';
 import userTypes from '../../helpers/userTypes';
+import { generateToken } from '../../helpers/token';
 import { validateEmail, validateFields } from '../../helpers/validation';
 
 export const signup = async (req, res) => {
@@ -158,7 +159,7 @@ export const verifyAccount = async (req, res) => {
   try {
     const {code, user} = req.body;
 
-    const findOtp = OTP.findOne({ code, user });
+    const findOtp = await OTP.findOne({ code, user });
     if (!findOtp) {
       return res.status(400).send({
         success: false,
@@ -166,9 +167,9 @@ export const verifyAccount = async (req, res) => {
       });
     }
 
-    const expiry = moment(findOtp.expires).diff(moment(), 'minutes');
+    const expiry = moment().diff(findOtp.expires, 'minutes');
 
-    if (expiry) {
+    if (expiry >= 10) {
       return res.status(400).send({
         success: false,
         message: 'The otp entered is either invalid/already expired'
@@ -183,11 +184,14 @@ export const verifyAccount = async (req, res) => {
       });
     }
 
+    await OTP.deleteOne({ code, user });
+
     return res.status(200).send({
       success: true,
       message: 'Verification Successful',
     });
   } catch (err) {
+    console.log(err)
     return res.status(500).send({
       success: false,
       message: 'an error occured'
@@ -195,4 +199,6 @@ export const verifyAccount = async (req, res) => {
   }
 }
 
-export const verifyPayment = async (req, res) => {}
+export const verifyPayment = async (req, res) => {
+  
+}

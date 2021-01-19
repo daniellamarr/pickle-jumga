@@ -8,7 +8,7 @@ const productRouter = Router();
 
 productRouter.get('/', listProducts);
 productRouter.get('/:productId', fetchProduct);
-productRouter.get('/owner', verifyToken, listSellerProducts);
+productRouter.get('/owner/all', verifyToken, listSellerProducts);
 productRouter.post('/', verifyToken, createProduct);
 
 export default productRouter;

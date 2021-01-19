@@ -2,9 +2,21 @@ import Product from '../../db/models/product';
 import User from '../../db/models/user';
 import { validateFields } from '../../helpers/validation';
 
-export const listProducts = (req, res) => {
+export const listProducts = async (req, res) => {
   try {
-    const products = Product.find({ active: true });
+    let products = await Product.find({ active: true }).populate('owner');
+    products = products.map((product) => {
+      const store = product.owner.store.name;
+      return {
+        id: product._id,
+        name: product.name,
+        price: product.price,
+        category: product.category,
+        image: product.image,
+        active: product.active,
+        store,
+      };
+    });
     return res.send({
       success: true,
       message: 'Products returned successfully',
@@ -20,17 +32,26 @@ export const listProducts = (req, res) => {
   }
 };
 
-export const fetchProduct = (req, res) => {
+export const fetchProduct = async (req, res) => {
   try {
-    const product = Product.findOne({
+    const product = await Product.findOne({
       active: true,
       _id: req.params.productId
-    });
+    }).populate('owner');
+    const store = product.owner.store.name;
     return res.send({
       success: true,
       message: 'Products returned successfully',
       data: {
-        product
+        product: {
+          id: product._id,
+          name: product.name,
+          price: product.price,
+          category: product.category,
+          image: product.image,
+          active: product.active,
+          store,
+        }
       }
     });
   } catch (err) {
@@ -41,9 +62,17 @@ export const fetchProduct = (req, res) => {
   }
 };
 
-export const listSellerProducts = (req, res) => {
+export const listSellerProducts = async (req, res) => {
   try {
-    const products = Product.find({ owner: req.query.owner });
+    let products = await Product.find({ owner: req.user.id });
+    products = products.map((product) => ({
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      category: product.category,
+      image: product.image,
+      active: product.active,
+    }));
     return res.send({
       success: true,
       message: 'Products returned successfully',
@@ -102,7 +131,7 @@ export const createProduct = async (req, res) => {
         message: 'Owner is invalid/not a seller'
       });
     }
-    const product = Product.create(req.body);
+    const product = await Product.create({ ...req.body, owner: req.user.id });
     return res.send({
       success: true,
       message: 'Product created successfully',

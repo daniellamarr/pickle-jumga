@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 config();
 
 export const generateToken = (payload) => {
-  const token = jwt.sign(payload, process.env.JWT_SECRET);
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1y' });
   return token;
 };
 
@@ -13,7 +13,8 @@ export const verifyToken = async (req, res, next) => {
     const token = req.body.token
       || req.params.token
       || req.query.token
-      || req.header.authorization;
+      || req.headers.authorization
+      || req.headers['x-access-token'];
     if (!token) {
       return res.status(403).send({
         success: false,
